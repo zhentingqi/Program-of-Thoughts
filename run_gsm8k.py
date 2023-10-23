@@ -162,11 +162,12 @@ if __name__ == "__main__":
                     max_batch_size=4,
                 )
                 prompts = [prompt]
-                results = generator.text_completion(
+                result = generator.text_completion(
                     prompts,
                     max_gen_len=256,
                     temperature=0.0,
                     top_p=1,
+                    logprobs=True
                 )
         else:
             # self-consistency decoding
@@ -197,16 +198,17 @@ if __name__ == "__main__":
                     max_batch_size=4,
                 )
                 prompts = [prompt] * 40
-                results = generator.text_completion(
+                result = generator.text_completion(
                     prompts,
                     max_gen_len=256,
                     temperature=0.4,
                     top_p=1,
+                    logprobs=True
                 )
 
         # self-consistency decoding or greedy decoding.
         result_counter = Counter()
-        codes = parse_api_result(result)
+        codes = parse_api_result(result, args.model_name)
         for r in codes:
             ans = safe_execute(r)
             ans = floatify_ans(ans)
@@ -214,7 +216,7 @@ if __name__ == "__main__":
                 result_counter.update([ans])
 
         if len(result_counter) > 0:
-            prediction = result_counter.most_common(1)[0][0]
+            prediction = result_counter.most_common(1)[0][0]    #! the most common answer 
         else:
             prediction = None
 

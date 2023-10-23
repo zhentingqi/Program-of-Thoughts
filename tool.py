@@ -111,12 +111,22 @@ def floatify_ans(ans):
     return ans
 
 
-def parse_api_result(result):
+def parse_api_result(result, model_name):
+    assert isinstance(result, list) and isinstance(model_name, str)
+    
     to_return = []
-    for idx, g in enumerate(result['choices']):
-        text = g['text']
-        logprob = sum(g['logprobs']['token_logprobs'])
-        to_return.append((text, logprob))
+    
+    if model_name == "gpt4":
+        for idx, g in enumerate(result['choices']):
+            text = g['text']
+            logprob = sum(g['logprobs']['token_logprobs'])
+            to_return.append((text, logprob))
+    elif model_name in ["llama", "codellama"]:
+        for idx, g in enumerate(result):
+            text = g['generation']
+            logprob = sum(g['logprobs'])
+            to_return.append((text, logprob))
+    
     to_return = sorted(to_return, key=lambda tup: tup[1], reverse=True)
     to_return = [r[0] for r in to_return]
     return to_return
