@@ -7,6 +7,7 @@ from datetime import datetime
 from tool import *
 import argparse
 from collections import Counter
+from llama_things.llama import Llama
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--key", default='OPENAI_KEY', type=str)
@@ -14,6 +15,7 @@ parser.add_argument("--start", default=0, type=int)
 parser.add_argument("--greedy", default=False, action='store_true')
 parser.add_argument("--dry_run", default=False, action='store_true')
 parser.add_argument("--end", default=-1, type=int)
+parser.add_argument("--model_name", default="llama", choices=["llama", "codellama", "gpt4"])
 args = parser.parse_args()
 
 
@@ -133,42 +135,74 @@ if __name__ == "__main__":
 
         if args.greedy:
             # greedy decoding
-            got_result = False
-            while not got_result:
-                try:
-                    result = openai.Completion.create(
-                        engine='code-davinci-002',
-                        prompt=full_prompt,
-                        api_key=os.getenv(args.key),
-                        max_tokens=256,
-                        temperature=0.0,
-                        top_p=1,
-                        n=1,
-                        stop=['\n\n'],
-                        logprobs=1
-                    )
-                    got_result = True
-                except Exception:
-                    sleep(3)
+            if args.model_name == "gpt4":
+                got_result = False
+                while not got_result:
+                    try:
+                        result = openai.Completion.create(
+                            engine='code-davinci-002',
+                            prompt=full_prompt,
+                            api_key=os.getenv(args.key),
+                            max_tokens=256,
+                            temperature=0.0,
+                            top_p=1,
+                            n=1,
+                            stop=['\n\n'],
+                            logprobs=1
+                        )
+                        got_result = True
+                    except Exception:
+                        sleep(3)
+            elif args.model_name in ["llama", "codellama"]:
+                ckpt_dir = args.model_name
+                generator = Llama.build(
+                    ckpt_dir=ckpt_dir,
+                    tokenizer_path=os.path.join(ckpt_dir, "tokenizer.model"),
+                    max_seq_len=2048,
+                    max_batch_size=4,
+                )
+                prompts = [prompt]
+                results = generator.text_completion(
+                    prompts,
+                    max_gen_len=256,
+                    temperature=0.0,
+                    top_p=1,
+                )
         else:
             # self-consistency decoding
-            got_result = False
-            while not got_result:
-                try:
-                    result = openai.Completion.create(
-                        engine='code-davinci-002',
-                        prompt=full_prompt,
-                        api_key=os.getenv(args.key),
-                        max_tokens=256,
-                        temperature=0.4,
-                        top_p=1,
-                        n=40,
-                        stop=['\n\n'],
-                        logprobs=1
-                    )
-                    got_result = True
-                except Exception as e:
-                    sleep(3)
+            if args.model_name == "gpt4":
+                got_result = False
+                while not got_result:
+                    try:
+                        result = openai.Completion.create(
+                            engine='code-davinci-002',
+                            prompt=full_prompt,
+                            api_key=os.getenv(args.key),
+                            max_tokens=256,
+                            temperature=0.4,
+                            top_p=1,
+                            n=40,
+                            stop=['\n\n'],
+                            logprobs=1
+                        )
+                        got_result = True
+                    except Exception as e:
+                        sleep(3)
+            elif args.model_name in ["llama", "codellama"]:
+                ckpt_dir = args.model_name
+                generator = Llama.build(
+                    ckpt_dir=ckpt_dir,
+                    tokenizer_path=os.path.join(ckpt_dir, "tokenizer.model"),
+                    max_seq_len=2048,
+                    max_batch_size=4,
+                )
+                prompts = [prompt] * 40
+                results = generator.text_completion(
+                    prompts,
+                    max_gen_len=256,
+                    temperature=0.4,
+                    top_p=1,
+                )
 
         # self-consistency decoding or greedy decoding.
         result_counter = Counter()
